@@ -1,0 +1,5 @@
+﻿Analyzing frontend...                                           
+
+   info - 'listenMode' is deprecated and shouldn't be used. Use SpeechListenOptions.listenMode instead - lib\services\translation_service.dart:170:9 - deprecated_member_use
+  error - The named parameter 'infinite' isn't defined - lib\views\home\home_screen.dart:393:15 - undefined_named_parameter
+

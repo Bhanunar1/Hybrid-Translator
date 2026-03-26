@@ -1,0 +1,148 @@
+﻿Compiling lib\main.dart for the Web...                          
+flutter : Target dart2js failed: 
+ProcessException: Process exited 
+abnormally with exit code 1:
+At line:1 char:1
++ flutter build web --no-pub 2>&1 
+| Out-File -Encoding utf8 
+build_error ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotS 
+   pecified: (Target dart2js ...t  
+  h exit code 1::String) [], Rem   
+ oteException
+    + FullyQualifiedErrorId : Nati 
+   veCommandError
+ 
+lib/views/home/home_screen.dart:671
+:115:
+Error: Member not found: 'black'.
+              Text('45%', style: 
+TextStyle(fontSize: 12, color: 
+theme.colorScheme.primary, 
+fontWeight: FontWeight.black)),
+                                   
+                                   
+                    ^^^^^
+Error: Compilation failed.
+  Command: C:\Program Files\flutter
+\bin\cache\dart-sdk\bin\dart.exe 
+compile js 
+--platform-binaries=C:\Program File
+s\flutter\bin\cache\flutter_web_sdk
+\kernel --invoker=flutter_tool 
+-Ddart.vm.product=true 
+-DFLUTTER_VERSION=3.32.6 
+-DFLUTTER_CHANNEL=stable -DFLUTTER_
+GIT_URL=https://github.com/flutter/
+flutter.git -DFLUTTER_FRAMEWORK_REV
+ISION=077b4a4ce1 -DFLUTTER_ENGINE_R
+EVISION=72f2b18bb0 
+-DFLUTTER_DART_VERSION=3.8.1 
+-DFLUTTER_WEB_USE_SKIA=true 
+-DFLUTTER_WEB_USE_SKWASM=false -DFL
+UTTER_WEB_CANVASKIT_URL=https://www
+.gstatic.com/flutter-canvaskit/72f2
+b18bb094f92f62a3113a8075240ebb59aff
+a/ --native-null-assertions 
+--no-source-maps -o 
+C:\Users\bhanu\Downloads\Hybrid tra
+nslator\frontend\.dart_tool\flutter
+_build\a190902b5c8d7d048c1c425655e9
+1d66\app.dill --packages=C:\Users\b
+hanu\Downloads\Hybrid translator\fr
+ontend\.dart_tool\package_config.js
+on --cfe-only 
+C:\Users\bhanu\Downloads\Hybrid tra
+nslator\frontend\.dart_tool\flutter
+_build\a190902b5c8d7d048c1c425655e9
+1d66\main.dart
+#0      RunResult.throwException (p
+ackage:flutter_tools/src/base/proce
+ss.dart:118:5)
+#1      _DefaultProcessUtils.run (p
+ackage:flutter_tools/src/base/proce
+ss.dart:344:19)
+<asynchronous suspension>
+#2      Dart2JSTarget.build (packag
+e:flutter_tools/src/build_system/ta
+rgets/web.dart:201:5)
+<asynchronous suspension>
+#3      
+_BuildInstance._invokeInternal (pac
+kage:flutter_tools/src/build_system
+/build_system.dart:873:9)
+<asynchronous suspension>
+#4      Future.wait.<anonymous 
+closure> 
+(dart:async/future.dart:525:21)
+<asynchronous suspension>
+#5      
+_BuildInstance.invokeTarget (packag
+e:flutter_tools/src/build_system/bu
+ild_system.dart:811:32)
+<asynchronous suspension>
+#6      Future.wait.<anonymous 
+closure> 
+(dart:async/future.dart:525:21)
+<asynchronous suspension>
+#7      
+_BuildInstance.invokeTarget (packag
+e:flutter_tools/src/build_system/bu
+ild_system.dart:811:32)
+<asynchronous suspension>
+#8      FlutterBuildSystem.build (p
+ackage:flutter_tools/src/build_syst
+em/build_system.dart:629:16)
+<asynchronous suspension>
+#9      WebBuilder.buildWeb (packag
+e:flutter_tools/src/web/compile.dar
+t:91:34)
+<asynchronous suspension>
+#10     BuildWebCommand.runCommand 
+(package:flutter_tools/src/commands
+/build_web.dart:246:5)
+<asynchronous suspension>
+#11     
+FlutterCommand.run.<anonymous 
+closure> (package:flutter_tools/src
+/runner/flutter_command.dart:1563:2
+7)
+<asynchronous suspension>
+#12     AppContext.run.<anonymous 
+closure> (package:flutter_tools/src
+/base/context.dart:154:19)
+<asynchronous suspension>
+#13     CommandRunner.runCommand (p
+ackage:args/command_runner.dart:212
+:13)
+<asynchronous suspension>
+#14     FlutterCommandRunner.runCom
+mand.<anonymous closure> (package:f
+lutter_tools/src/runner/flutter_com
+mand_runner.dart:494:9)
+<asynchronous suspension>
+#15     AppContext.run.<anonymous 
+closure> (package:flutter_tools/src
+/base/context.dart:154:19)
+<asynchronous suspension>
+#16     
+FlutterCommandRunner.runCommand (pa
+ckage:flutter_tools/src/runner/flut
+ter_command_runner.dart:431:5)
+<asynchronous suspension>
+#17     run.<anonymous 
+closure>.<anonymous closure> (packa
+ge:flutter_tools/runner.dart:98:11)
+<asynchronous suspension>
+#18     AppContext.run.<anonymous 
+closure> (package:flutter_tools/src
+/base/context.dart:154:19)
+<asynchronous suspension>
+#19     main (package:flutter_tools
+/executable.dart:102:3)
+<asynchronous suspension>
+
+Compiling lib\main.dart for the Web...                             23.5s
+Error: Failed to compile 
+application for the Web.
