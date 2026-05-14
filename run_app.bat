@@ -1,0 +1,9 @@
+@echo off
+echo 🚀 Starting Hybrid Translator Pro...
+
+echo 🌐 Starting Backend Server...
+start "Hylator Backend" cmd /k "cd backend && python main.py"
+
+echo 📱 Starting Flutter App...
+cd frontend
+flutter run

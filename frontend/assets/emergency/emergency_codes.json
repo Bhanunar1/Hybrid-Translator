@@ -1,7 +1,9 @@
 {
-    "E01": "I need medical help",
-    "E02": "Call the police",
-    "E03": "I am lost",
-    "E04": "I need water",
-    "E05": "Danger nearby"
+    "E01": "I need medical help immediately",
+    "E02": "Please call the police now",
+    "E03": "I am lost, please help me find my way",
+    "E04": "I need water and food",
+    "E05": "There is danger nearby, stay away",
+    "E06": "I need a doctor urgently",
+    "E07": "Please call an ambulance"
 }

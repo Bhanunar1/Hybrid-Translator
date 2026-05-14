@@ -14,10 +14,11 @@ class EmergencyPanel extends StatefulWidget {
 class _EmergencyPanelState extends State<EmergencyPanel> {
   String? _activeMessage;
 
+  // ── Emergency Codes ───────────────────────────────────────────────────────────
   static const List<Map<String, dynamic>> _codes = [
     {
       'code': 'E01',
-      'text': 'I NEED MEDICAL HELP',
+      'text': 'MEDICAL HELP',
       'icon': Icons.medical_services_rounded,
       'colorValue': 0xFFEF4444,
       'symbol': '🏥',
@@ -41,7 +42,7 @@ class _EmergencyPanelState extends State<EmergencyPanel> {
     },
     {
       'code': 'E04',
-      'text': 'I NEED WATER / FOOD',
+      'text': 'WATER / FOOD',
       'icon': Icons.restaurant_rounded,
       'colorValue': 0xFF06B6D4,
       'symbol': '🍱',
@@ -54,6 +55,22 @@ class _EmergencyPanelState extends State<EmergencyPanel> {
       'colorValue': 0xFFEA580C,
       'symbol': '⚠️',
       'desc': 'Proximity hazard'
+    },
+    {
+      'code': 'E06',
+      'text': 'UrgENT DOCTOR',
+      'icon': Icons.local_hospital_rounded,
+      'colorValue': 0xFF9333EA,
+      'symbol': '🥼',
+      'desc': 'Medical expert call'
+    },
+    {
+      'code': 'E07',
+      'text': 'AMBULANCE SOS',
+      'icon': Icons.airport_shuttle_rounded,
+      'colorValue': 0xFFDC2626,
+      'symbol': '🚑',
+      'desc': 'Priority transport'
     },
   ];
 
@@ -71,17 +88,22 @@ class _EmergencyPanelState extends State<EmergencyPanel> {
     final isDark = theme.brightness == Brightness.dark;
 
     return BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
       child: Container(
         constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.9),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface.withAlpha(isDark ? 220 : 255),
+          color: theme.colorScheme.surface.withAlpha(isDark ? 200 : 230),
+          image: DecorationImage(
+            image: const AssetImage('assets/sos.jpg'),
+            fit: BoxFit.cover,
+            opacity: isDark ? 0.3 : 0.1,
+          ),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
           border: Border.all(color: Colors.white.withAlpha(isDark ? 30 : 50), width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withAlpha(80),
+              color: Colors.black.withAlpha(isDark ? 100 : 40),
               blurRadius: 40,
               offset: const Offset(0, -10),
             )
@@ -101,7 +123,7 @@ class _EmergencyPanelState extends State<EmergencyPanel> {
             const SizedBox(height: 24),
 
             // SOS Banner
-            _buildSOSHeader(theme),
+            _buildSafeHavenHeader(theme),
             
             const SizedBox(height: 12),
 
@@ -109,7 +131,7 @@ class _EmergencyPanelState extends State<EmergencyPanel> {
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 400),
               child: _activeMessage != null
-                  ? _buildActiveBroadcastBanner(_activeMessage!)
+                  ? _buildActiveSignal(_activeMessage!, theme)
                   : const SizedBox(height: 0),
             ),
 
@@ -117,30 +139,28 @@ class _EmergencyPanelState extends State<EmergencyPanel> {
 
             // Grid
             Flexible(
-              child: SingleChildScrollView(
+              child: GridView.builder(
+                shrinkWrap: true,
+                padding: const EdgeInsets.only(bottom: 24),
                 physics: const BouncingScrollPhysics(),
-                child: GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _codes.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 0.9,
-                  ),
-                  itemBuilder: (context, index) {
-                    return _EmergencyTile(
-                      item: _codes[index],
-                      index: index,
-                      onTap: () => _triggerEmergency(service, _codes[index]),
-                    );
-                  },
+                itemCount: _codes.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 0.9,
                 ),
+                itemBuilder: (context, index) {
+                  return _EmergencyTile(
+                    item: _codes[index],
+                    index: index,
+                    onTap: () => _triggerEmergency(service, _codes[index]),
+                  );
+                },
               ),
             ),
             
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
 
             // Secure Termination Button
             SizedBox(
@@ -149,11 +169,12 @@ class _EmergencyPanelState extends State<EmergencyPanel> {
               child: ElevatedButton.icon(
                 onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.close_rounded),
-                label: const Text('TERMINATE SESSION', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+                label: const Text('TERMINATE SOS SESSION', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: theme.colorScheme.surfaceVariant.withAlpha(100),
-                  foregroundColor: theme.colorScheme.onSurface,
+                  backgroundColor: theme.colorScheme.error.withAlpha(20),
+                  foregroundColor: theme.colorScheme.error,
                   elevation: 0,
+                  side: BorderSide(color: theme.colorScheme.error.withAlpha(50)),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                 ),
               ),
@@ -165,55 +186,46 @@ class _EmergencyPanelState extends State<EmergencyPanel> {
     );
   }
 
-  Widget _buildSOSHeader(ThemeData theme) {
+  Widget _buildSafeHavenHeader(ThemeData theme) {
     return Column(
       children: [
-        Text(
-          'PROTOCOL: EMERGENCY',
-          style: TextStyle(
-            color: Colors.red,
-            fontWeight: FontWeight.w900,
-            fontSize: 10,
-            letterSpacing: 2.0,
-          ),
+        Container(
+          width: 40, height: 4,
+          margin: const EdgeInsets.only(bottom: 20),
+          decoration: BoxDecoration(color: Colors.white.withAlpha(100), borderRadius: BorderRadius.circular(2)),
         ),
-        const SizedBox(height: 4),
-        Text(
-          'S.O.S COMMAND CENTER',
-          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900, letterSpacing: -0.5),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Pulse(infinite: true, child: const Icon(Icons.gpp_maybe_rounded, color: Colors.red, size: 28)),
+            const SizedBox(width: 12),
+            const Text('HYLATOR GUARD', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 3, fontSize: 16)),
+          ],
         ),
+        const SizedBox(height: 8),
+        Text('INSTANT DISTRESS SIGNAL HUB', style: TextStyle(color: theme.colorScheme.onSurface.withAlpha(150), fontSize: 10, fontWeight: FontWeight.bold)),
       ],
     );
   }
 
-  Widget _buildActiveBroadcastBanner(String msg) {
+  Widget _buildActiveSignal(String message, ThemeData theme) {
     return FadeIn(
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        margin: const EdgeInsets.only(top: 20),
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.red,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(color: Colors.red.withAlpha(100), blurRadius: 20, spreadRadius: 2),
-          ],
+          color: Colors.red.withAlpha(40),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.red.withAlpha(100), width: 2),
         ),
-        child: Row(
+        child: Column(
           children: [
-            const Icon(Icons.record_voice_over_rounded, color: Colors.white, size: 28),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('BROADCASTING...', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
-                  Text(
-                    msg,
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, height: 1.1),
-                  ),
-                ],
-              ),
-            ),
+            Pulse(infinite: true, child: const Icon(Icons.emergency_share_rounded, color: Colors.red, size: 48)),
+            const SizedBox(height: 16),
+            Text(message.toUpperCase(), style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: 2)),
+            const SizedBox(height: 8),
+            const Text('BROADCASTING TO NEARBY NODES...', style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -265,7 +277,7 @@ class _EmergencyTile extends StatelessWidget {
                   Text(
                     item['text'] as String,
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 12, height: 1.1),
+                    style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 11, height: 1.1),
                   ),
                   const SizedBox(height: 4),
                   Text(

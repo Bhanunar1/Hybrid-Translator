@@ -1,17 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:shimmer/shimmer.dart';
 import '../../services/translation_service.dart';
-import '../../services/auth_service.dart';
 import '../../widgets/emergency_panel.dart';
-import '../../utils/color_extensions.dart';
-import 'dart:ui';
+import '../settings/settings_screen.dart';
+import 'dart:async';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  // ── Language picker ──────────────────────────────────────────────────────────
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+  late AnimationController _micPulseController;
+  final TextEditingController _typeController = TextEditingController();
+  Timer? _debounceTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _micPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _micPulseController.dispose();
+    _typeController.dispose();
+    _debounceTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onTypeChanged(String text, TranslationService service) {
+    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      if (text.trim().isNotEmpty) {
+        service.translateTypedText(text.trim());
+      }
+    });
+  }
+
   void _showLanguagePicker(BuildContext context, bool isSource) {
     final service = Provider.of<TranslationService>(context, listen: false);
     showModalBottomSheet(
@@ -24,24 +56,14 @@ class HomeScreen extends StatelessWidget {
           height: MediaQuery.of(ctx).size.height * 0.7,
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
           ),
           child: Column(
             children: [
               const SizedBox(height: 12),
-              Container(
-                width: 40,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.grey.withAlpha(100),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
+              Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey.withAlpha(100), borderRadius: BorderRadius.circular(10))),
               const SizedBox(height: 24),
-              Text(
-                isSource ? 'Source Language' : 'Target Language',
-                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-              ),
+              Text(isSource ? 'Origin Language' : 'Destination Language', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900, color: theme.colorScheme.primary)),
               const SizedBox(height: 16),
               const Divider(height: 1),
               Expanded(
@@ -51,35 +73,19 @@ class HomeScreen extends StatelessWidget {
                   separatorBuilder: (_, __) => const Divider(height: 1, indent: 70),
                   itemBuilder: (ctx2, index) {
                     final lang = TranslationService.supportedLanguages[index];
-                    final current = isSource ? service.sourceLang : service.targetLang;
-                    final isSelected = current == lang;
+                    final isSelected = (isSource ? service.sourceLang : service.targetLang) == lang;
                     return ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: isSelected ? theme.colorScheme.primary.withAlpha(26) : Colors.transparent,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(lang.flag, style: const TextStyle(fontSize: 28)),
-                      ),
-                      title: Text(
-                        lang.name,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                          color: isSelected ? theme.colorScheme.primary : null,
-                        ),
-                      ),
-                      trailing: isSelected
-                          ? Icon(Icons.check_circle_rounded, color: theme.colorScheme.primary)
-                          : null,
+                      leading: Text(lang.flag, style: const TextStyle(fontSize: 32)),
+                      title: Text(lang.name, style: TextStyle(fontWeight: isSelected ? FontWeight.w900 : FontWeight.w500, color: isSelected ? theme.colorScheme.primary : null)),
+                      trailing: isSelected ? Icon(Icons.eco_rounded, color: theme.colorScheme.primary) : null,
                       onTap: () {
-                        if (isSource) {
-                          service.updateSourceLang(lang);
-                        } else {
-                          service.updateTargetLang(lang);
-                        }
-                        Navigator.pop(ctx);
+                      if (isSource) {
+                        service.updateSourceLang(lang);
+                      } else {
+                        service.updateTargetLang(lang);
+                      }
+                      Navigator.pop(ctx);
                       },
                     );
                   },
@@ -92,19 +98,9 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  void _openEmergencyPanel(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => const EmergencyPanel(),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final service = Provider.of<TranslationService>(context);
-    final auth = Provider.of<AuthService>(context);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -112,678 +108,437 @@ class HomeScreen extends StatelessWidget {
       backgroundColor: theme.colorScheme.surface,
       body: Stack(
         children: [
-          // Futuristic Background Elements
-          if (!isDark)
-            Positioned(
-              top: -100,
-              right: -50,
-              child: _CircularBlob(color: theme.colorScheme.primary.withAlpha(26), size: 300),
-            ),
-          
-          CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              _buildSliverAppBar(context, auth, service, theme),
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    const SizedBox(height: 8),
-                    
-                    // Dashboard Metrics Grid
-                    FadeInDown(
-                      duration: const Duration(milliseconds: 600),
-                      child: _buildMetricsGrid(service, theme),
-                    ),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // Language Selection Hub
-                    FadeInDown(
-                      delay: const Duration(milliseconds: 200),
-                      child: _buildLanguageHub(context, service, theme),
-                    ),
-                    
-                    if (service.isDownloading) 
-                      Padding(
-                        padding: const EdgeInsets.only(top: 16),
-                        child: FadeIn(child: _buildDownloadBar(service, theme)),
-                      ),
-                      
-                    const SizedBox(height: 24),
-                    
-                    // Main Translation Engine UI
-                    FadeInUp(
-                      delay: const Duration(milliseconds: 400),
-                      child: _buildTranslationEngine(service, theme),
-                    ),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // SOS Activation
-                    FadeInUp(
-                      delay: const Duration(milliseconds: 600),
-                      child: _buildEmergencyToggle(context, service),
-                    ),
-                    
-                    const SizedBox(height: 100), // Space for Mic button
-                  ]),
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/home.jpg'),
+                  fit: BoxFit.cover,
                 ),
               ),
-            ],
-          ),
-
-          // Floating Command Center (Mic)
-          Positioned(
-            bottom: 30,
-            left: 0,
-            right: 0,
-            child: FadeInUp(
-              delay: const Duration(milliseconds: 800),
-              child: _buildMicCommandCenter(service, theme),
             ),
           ),
+          Container(color: Colors.black.withAlpha(isDark ? 140 : 80)), // Atmospheric overlay
+          Positioned(
+            top: -50,
+            right: -50,
+            child: Opacity(opacity: 0.1, child: Icon(Icons.forest_rounded, size: 300, color: theme.colorScheme.primary)),
+          ),
+
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(32),
+                child: CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    _buildAppBar(context, theme, isDark),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                      sliver: SliverList(
+                        delegate: SliverChildListDelegate([
+                          // Phrasebook Section
+                          FadeInUp(delay: const Duration(milliseconds: 200), child: _buildPhrasebook(service, theme)),
+                          const SizedBox(height: 24),
+                          
+                          // Language Hub (Map Style)
+                          FadeInDown(child: _buildLanguageHub(context, service, theme)),
+                          const SizedBox(height: 24),
+                          
+                          // Main Translation Module
+                          FadeInUp(delay: const Duration(milliseconds: 200), child: _buildLeafCard(service, theme, isDark)),
+                          
+                          const SizedBox(height: 24),
+                          
+                          // Input Mode
+                          FadeInUp(delay: const Duration(milliseconds: 300), child: _buildModeToggle(service, theme)),
+                          
+                          const SizedBox(height: 24),
+                          
+                          // Emergency Portal
+                          FadeInUp(delay: const Duration(milliseconds: 400), child: _buildEmergencyPortal(context, service, theme)),
+                          
+                          const SizedBox(height: 100),
+                        ]),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Tools Overlay
+          Positioned(
+            top: 20, right: 20,
+            child: IconButton(
+              icon: Icon(Icons.settings_suggest_rounded, color: theme.colorScheme.primary, size: 28),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
+            ),
+          ),
+          
+          if (!service.isTypingMode)
+            Positioned(bottom: 60, left: 0, right: 0, child: _buildNatureMic(service, theme)),
+          
+          if (service.isTypingMode)
+            Positioned(
+              bottom: 20, left: 0, right: 0, 
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: _buildDynamicTypingBar(context, service, theme, isDark),
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildSliverAppBar(BuildContext context, AuthService auth, TranslationService service, ThemeData theme) {
+  Widget _buildAppBar(BuildContext context, ThemeData theme, bool isDark) {
     return SliverAppBar(
-      expandedHeight: 110,
-      floating: true,
+      expandedHeight: 120,
       pinned: true,
-      elevation: 0,
-      backgroundColor: theme.colorScheme.surface.withAlpha(230),
+      backgroundColor: theme.colorScheme.surface.withAlpha(200),
       flexibleSpace: FlexibleSpaceBar(
-        centerTitle: false,
         titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
-        title: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+        title: Row(
           children: [
-            Text(
-              'HYBRID TRANS',
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.5,
-                fontSize: 18,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-            Text(
-              'PRO AUTHENTICATED',
-              style: TextStyle(
-                fontWeight: FontWeight.w500,
-                letterSpacing: 1.0,
-                fontSize: 8,
-                color: theme.colorScheme.onSurface.withAlpha(128),
-              ),
-            ),
+            const Icon(Icons.eco_rounded, color: Colors.green, size: 24),
+            const SizedBox(width: 8),
+            Text('HYLATOR TRANS', style: TextStyle(fontWeight: FontWeight.w900, color: theme.colorScheme.primary, letterSpacing: 1.2, fontSize: 18, shadows: [Shadow(color: theme.colorScheme.primary.withAlpha(100), blurRadius: 10)])),
           ],
         ),
       ),
       actions: [
-        _buildStatusBadge(service.currentMode),
-        const SizedBox(width: 8),
-        IconButton(
-          onPressed: () async {
-            await auth.logout();
-          },
-          icon: const Icon(Icons.power_settings_new_rounded, size: 22),
-          style: IconButton.styleFrom(
-            backgroundColor: theme.colorScheme.errorContainer.withAlpha(isDarkTheme(theme) ? 50 : 100),
-            foregroundColor: theme.colorScheme.error,
-          ),
-        ),
-        const SizedBox(width: 20),
+        IconButton(onPressed: () => Navigator.pushNamed(context, '/history'), icon: const Icon(Icons.history_rounded)),
+        IconButton(onPressed: () => Navigator.pushNamed(context, '/profile'), icon: const Icon(Icons.account_circle_rounded)),
+        const SizedBox(width: 12),
       ],
     );
   }
 
-  bool isDarkTheme(ThemeData theme) => theme.brightness == Brightness.dark;
+  Widget _buildPhrasebook(TranslationService service, ThemeData theme) {
+    final phrases = [
+      {'text': 'Where is the sanctuary?', 'icon': Icons.home_rounded},
+      {'text': 'I need a local guide', 'icon': Icons.map_rounded},
+      {'text': 'How much for the journey?', 'icon': Icons.payments_rounded},
+      {'text': 'Thank you for the hospitality', 'icon': Icons.favorite_rounded},
+    ];
 
-  Widget _buildMetricsGrid(TranslationService service, ThemeData theme) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Row(
-          children: [
-            Expanded(child: _MetricItem(
-              icon: Icons.speed_rounded, 
-              label: 'Latency', 
-              value: '124ms', 
-              color: Colors.blue,
-              theme: theme,
-            )),
-            const SizedBox(width: 12),
-            Expanded(child: _MetricItem(
-              icon: Icons.auto_awesome_rounded, 
-              label: 'Accuracy', 
-              value: '99.2%', 
-              color: Colors.purple,
-              theme: theme,
-            )),
-            const SizedBox(width: 12),
-            Expanded(child: _MetricItem(
-              icon: Icons.language_rounded, 
-              label: 'Engine', 
-              value: service.currentMode == TranslationMode.online ? 'Cloud AI' : 'ML Kit', 
-              color: Colors.orange,
-              theme: theme,
-            )),
-          ],
-        );
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('THE SANCTUARY PHRASEBOOK', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1.5)),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 100,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: phrases.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final p = phrases[index];
+              return InkWell(
+                onTap: () {
+                  _typeController.text = p['text'] as String;
+                  _onTypeChanged(p['text'] as String, service);
+                },
+                child: Container(
+                  width: 160,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withAlpha(20),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: theme.colorScheme.primary.withAlpha(40)),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(p['icon'] as IconData, size: 24, color: theme.colorScheme.primary),
+                      const SizedBox(height: 8),
+                      Text(p['text'] as String, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold), maxLines: 2),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildLanguageHub(BuildContext context, TranslationService service, ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withAlpha(isDarkTheme(theme) ? 30 : 50),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _LangTile(
-              label: 'DECODE',
-              lang: service.sourceLang,
-              theme: theme,
-              onTap: () => _showLanguagePicker(context, true),
-            ),
-          ),
-          
-          // Advanced Swapper
-          GestureDetector(
-            onTap: () {
-              final tmp = service.sourceLang;
-              service.updateSourceLang(service.targetLang);
-              service.updateTargetLang(tmp);
-            },
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: theme.colorScheme.primary.withAlpha(100),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  )
-                ],
-              ),
-              child: const Icon(Icons.sync_rounded, color: Colors.white, size: 24),
-            ),
-          ),
-          
-          Expanded(
-            child: _LangTile(
-              label: 'ENCODE',
-              lang: service.targetLang,
-              theme: theme,
-              onTap: () => _showLanguagePicker(context, false),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTranslationEngine(TranslationService service, ThemeData theme) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: theme.colorScheme.outlineVariant.withAlpha(100)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(isDarkTheme(theme) ? 50 : 10),
-            blurRadius: 30,
-            offset: const Offset(0, 10),
-          )
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: Column(
-          children: [
-            // Source Area
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _Label(text: 'INPUT SIGNAL', color: theme.colorScheme.primary),
-                  const SizedBox(height: 12),
-                  Text(
-                    service.sourceText,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.onSurface,
-                      height: 1.3,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Separator with pulse effect
-            Container(
-              height: 1,
-              width: double.infinity,
-              color: theme.colorScheme.outlineVariant.withAlpha(100),
-            ),
-            
-            // Result Area
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    theme.colorScheme.primary.withAlpha(10),
-                    theme.colorScheme.primary.withAlpha(30),
-                  ],
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _Label(text: 'TRANSLATED OUTPUT', color: theme.colorScheme.secondary),
-                  const SizedBox(height: 12),
-                  if (service.isDownloading || (service.isListening && service.translatedText.isEmpty))
-                    Shimmer.fromColors(
-                      baseColor: theme.colorScheme.primary.withAlpha(50),
-                      highlightColor: theme.colorScheme.primary.withAlpha(100),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            height: 24,
-                            width: 200,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Container(
-                            height: 24,
-                            width: 150,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    GestureDetector(
-                      onTap: service.speakTranslation,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            service.translatedText.isEmpty ? 'Waiting for voice signal...' : service.translatedText,
-                            style: theme.textTheme.headlineMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: service.translatedText.isEmpty 
-                                ? theme.colorScheme.onSurface.withAlpha(80)
-                                : theme.colorScheme.primary,
-                              height: 1.2,
-                            ),
-                          ),
-                          if (service.translatedText.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 16),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.volume_up_rounded, color: theme.colorScheme.primary, size: 20),
-                                  const SizedBox(width: 8),
-                                  Text('Tap to replay', style: TextStyle(color: theme.colorScheme.primary, fontSize: 12, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMicCommandCenter(TranslationService service, ThemeData theme) {
-    bool isListening = service.isListening;
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          GestureDetector(
-            onTap: () {
-              if (service.isListening) {
-                service.stopListening();
-              } else {
-                service.startListening();
-              }
-            },
-            onDoubleTap: service.stopListening,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: isListening 
-                        ? [const Color(0xFFEF4444), const Color(0xFFB91C1C)]
-                        : [theme.colorScheme.primary, theme.colorScheme.primary.darken(20)],
-                    ),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: (isListening ? Colors.red : theme.colorScheme.primary).withAlpha(150),
-                        blurRadius: 30,
-                        spreadRadius: 5,
-                      )
-                    ],
-                  ),
-                  child: Icon(
-                    isListening ? Icons.graphic_eq_rounded : Icons.mic_rounded,
-                    color: Colors.white,
-                    size: 32,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: (isListening ? Colors.red : theme.colorScheme.primary).withAlpha(40),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              isListening ? 'PROCESSING SIGNAL...' : 'CLICK TO ANALYZE VOICE',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.2,
-                color: isListening ? Colors.red : theme.colorScheme.primary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmergencyToggle(BuildContext context, TranslationService service) {
-    final bool active = service.isEmergencyMode;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      decoration: BoxDecoration(
-        gradient: active 
-          ? LinearGradient(
-              colors: [Colors.red.withAlpha(40), Colors.red.withAlpha(10)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            )
-          : null,
-        color: active ? null : Colors.grey.withAlpha(20),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color: active ? Colors.red.withAlpha(150) : Colors.transparent,
-          width: 2,
-        ),
-        boxShadow: active ? [
-          BoxShadow(
-            color: Colors.red.withAlpha(40),
-            blurRadius: 20,
-            spreadRadius: 2,
-          )
-        ] : [],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: active ? Colors.red : Colors.grey.withAlpha(40),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              active ? Icons.notification_important_rounded : Icons.warning_amber_rounded,
-              color: active ? Colors.white : Colors.grey.shade600,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  active ? 'S.O.S ACTIVE' : 'EMERGENCY PROTOCOL',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 14,
-                    letterSpacing: 1.2,
-                    color: active ? Colors.red : Colors.grey.shade800,
-                  ),
-                ),
-                Text(
-                  active ? 'Broadcasting distress signals' : 'Global hazard communication',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: active ? Colors.red.withAlpha(180) : Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Switch.adaptive(
-            value: active,
-            onChanged: (val) {
-              service.toggleEmergencyMode();
-              if (val) {
-                Future.delayed(const Duration(milliseconds: 300), () {
-                  _openEmergencyPanel(context);
-                });
-              }
-            },
-            activeColor: Colors.red,
-            activeTrackColor: Colors.red.withAlpha(100),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusBadge(TranslationMode mode) {
-    final Color color;
-    final String label;
-
-    switch (mode) {
-      case TranslationMode.online:
-        color = const Color(0xFF22C55E); label = 'ONLINE READY'; break;
-      case TranslationMode.offline:
-        color = const Color(0xFFF59E0B); label = 'OFFLINE MODE'; break;
-      case TranslationMode.emergency:
-        color = const Color(0xFFEF4444); label = 'SOS ACTIVE'; break;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withAlpha(20),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withAlpha(100)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w900,
-          fontSize: 9,
-          letterSpacing: 1.0,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDownloadBar(TranslationService service, ThemeData theme) {
-    return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: theme.colorScheme.primary.withAlpha(15),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: theme.colorScheme.primary.withAlpha(50)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _LangSelector(label: 'SOURCE', lang: service.sourceLang, onTap: () => _showLanguagePicker(context, true), theme: theme),
+          GestureDetector(
+            onTap: service.swapLanguages,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
+              child: const Icon(Icons.sync_rounded, color: Colors.white, size: 28),
+            ),
+          ),
+          _LangSelector(label: 'TARGET', lang: service.targetLang, onTap: () => _showLanguagePicker(context, false), theme: theme),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLeafCard(TranslationService service, ThemeData theme, bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: theme.colorScheme.primary.withAlpha(60)),
+        boxShadow: [BoxShadow(color: Colors.black.withAlpha(isDark ? 80 : 10), blurRadius: 30, offset: const Offset(0, 10))],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Syncing Language Neural Weights...',
-                style: TextStyle(fontSize: 12, color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
-              ),
-              Text('45%', style: TextStyle(fontSize: 12, color: theme.colorScheme.primary, fontWeight: FontWeight.w900)),
-            ],
+          // Source
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _Tag(label: 'ORIGIN', color: theme.colorScheme.primary),
+                const SizedBox(height: 12),
+                Text(service.sourceText, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600, height: 1.4)),
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: LinearProgressIndicator(
-              minHeight: 8,
-              backgroundColor: theme.colorScheme.primary.withAlpha(30),
-              valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+          Divider(height: 1, color: theme.colorScheme.outlineVariant.withAlpha(60)),
+          // Destination
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withAlpha(10),
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    _Tag(label: 'HARMONIZED', color: Colors.teal),
+                    const Spacer(),
+                    if (service.translatedText.isNotEmpty)
+                      IconButton(onPressed: service.speakTranslation, icon: const Icon(Icons.volume_up_rounded, size: 20, color: Colors.teal)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (service.isTranslating)
+                   const LinearProgressIndicator(minHeight: 2, borderRadius: BorderRadius.all(Radius.circular(10)))
+                else
+                  Text(
+                    service.translatedText.isEmpty ? 'Awaiting signal...' : service.translatedText,
+                    style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900, color: theme.colorScheme.primary, height: 1.2),
+                  ),
+              ],
             ),
           ),
         ],
       ),
     );
   }
-}
 
-class _MetricItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-  final ThemeData theme;
+  Widget _buildModeToggle(TranslationService service, ThemeData theme) {
+    bool isType = service.isTypingMode;
+    return Row(
+      children: [
+        Expanded(child: _NatureTab(icon: Icons.mic_rounded, label: 'Voice', active: !isType, onTap: () => service.setTypingMode(false), theme: theme)),
+        const SizedBox(width: 16),
+        Expanded(child: _NatureTab(icon: Icons.keyboard_rounded, label: 'Type', active: isType, onTap: () => service.setTypingMode(true), theme: theme)),
+      ],
+    );
+  }
 
-  const _MetricItem({required this.icon, required this.label, required this.value, required this.color, required this.theme});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildEmergencyPortal(BuildContext context, TranslationService service, ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: theme.colorScheme.outlineVariant.withAlpha(80)),
+        gradient: LinearGradient(colors: [Colors.red.shade700, Colors.red.shade900]),
+        borderRadius: BorderRadius.circular(28),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(height: 12),
-          Text(value, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900, fontSize: 14)),
-          Text(label, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurface.withAlpha(128))),
+          const Icon(Icons.gpp_maybe_rounded, color: Colors.white, size: 32),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: const [
+              Text('EMERGENCY PROTOCOL', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
+              Text('Instant SOS distress signals', style: TextStyle(color: Colors.white70, fontSize: 11)),
+            ]),
+          ),
+          Switch.adaptive(
+            value: service.isEmergencyMode,
+            activeColor: Colors.white,
+            onChanged: (v) {
+              service.toggleEmergencyMode();
+              if (v) showModalBottomSheet(context: context, backgroundColor: Colors.transparent, isScrollControlled: true, builder: (_) => const EmergencyPanel());
+            },
+          ),
         ],
       ),
     );
   }
-}
 
-class _LangTile extends StatelessWidget {
-  final String label;
-  final LanguageItem lang;
-  final ThemeData theme;
-  final VoidCallback onTap;
-
-  const _LangTile({required this.label, required this.lang, required this.theme, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-          child: Column(
-            children: [
-              Text(lang.flag, style: const TextStyle(fontSize: 32)),
-              const SizedBox(height: 8),
-              Text(
-                lang.name.toUpperCase(),
-                style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: 12),
-              ),
-              Text(
-                label,
-                style: TextStyle(fontSize: 8, fontWeight: FontWeight.w500, color: theme.colorScheme.onSurface.withAlpha(100)),
-              ),
-            ],
+  Widget _buildNatureMic(TranslationService service, ThemeData theme) {
+    bool active = service.isListening;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Center(
+          child: GestureDetector(
+            onTap: active ? service.stopListening : service.startListening,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                if (active)
+                  Pulse(
+                    infinite: true,
+                    child: Container(width: 120, height: 120, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.red.withAlpha(50), width: 4))),
+                  ),
+                AnimatedBuilder(
+                  animation: _micPulseController,
+                  builder: (_, __) => Container(
+                    width: 90, height: 90,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: active ? Colors.red : theme.colorScheme.primary,
+                      boxShadow: [
+                        BoxShadow(
+                          color: (active ? Colors.red : theme.colorScheme.primary).withAlpha(100), 
+                          blurRadius: active ? 40 * _micPulseController.value : 20, 
+                          spreadRadius: active ? 15 * _micPulseController.value : 2
+                        )
+                      ],
+                    ),
+                    child: Icon(active ? Icons.waves_rounded : Icons.mic_rounded, color: Colors.white, size: 40),
+                  ),
+                ),
+              ],
+            ),
           ),
+        ),
+        const SizedBox(height: 16),
+        FadeIn(
+          animate: active,
+          child: Text(
+            active ? 'HYLATOR IS TUNING IN...' : 'TAP TO BROADCAST',
+            style: TextStyle(fontWeight: FontWeight.w900, color: theme.colorScheme.primary, letterSpacing: 2, fontSize: 10),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDynamicTypingBar(BuildContext context, TranslationService service, ThemeData theme, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.only(left: 20, right: 20, top: 12, bottom: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withAlpha(isDark ? 80 : 20), blurRadius: 24, offset: const Offset(0, 8)),
+        ],
+        border: Border.all(color: theme.colorScheme.primary.withAlpha(40)),
+      ),
+      child: TextField(
+        controller: _typeController,
+        onChanged: (v) => _onTypeChanged(v, service),
+        decoration: InputDecoration(
+          hintText: 'Share your thoughts with the world...',
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+          filled: true,
+          fillColor: theme.colorScheme.primary.withAlpha(15),
+          prefixIcon: const Icon(Icons.short_text_rounded),
         ),
       ),
     );
   }
 }
 
-class _Label extends StatelessWidget {
-  final String text;
+class _LangSelector extends StatelessWidget {
+  final String label;
+  final dynamic lang;
+  final VoidCallback onTap;
+  final ThemeData theme;
+  const _LangSelector({required this.label, required this.lang, required this.onTap, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Text(lang.flag, style: const TextStyle(fontSize: 40)),
+          const SizedBox(height: 4),
+          Text(lang.name.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
+          Text(label, style: TextStyle(fontSize: 9, color: theme.colorScheme.onSurface.withAlpha(100), fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+}
+
+class _Tag extends StatelessWidget {
+  final String label;
   final Color color;
-  const _Label({required this.text, required this.color});
+  const _Tag({required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withAlpha(20),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 9, letterSpacing: 1.2),
-      ),
+      decoration: BoxDecoration(color: color.withAlpha(20), borderRadius: BorderRadius.circular(100), border: Border.all(color: color.withAlpha(100))),
+      child: Text(label, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1.0)),
     );
   }
 }
 
-class _CircularBlob extends StatelessWidget {
-  final Color color;
-  final double size;
-  const _CircularBlob({required this.color, required this.size});
+class _NatureTab extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+  final ThemeData theme;
+  const _NatureTab({required this.icon, required this.label, required this.active, required this.onTap, required this.theme});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80), child: Container(color: Colors.transparent)),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: active ? theme.colorScheme.primary : theme.colorScheme.primary.withAlpha(15),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: active ? Colors.white : theme.colorScheme.primary, size: 20),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(color: active ? Colors.white : theme.colorScheme.primary, fontWeight: FontWeight.w900)),
+          ],
+        ),
+      ),
     );
   }
 }
-
